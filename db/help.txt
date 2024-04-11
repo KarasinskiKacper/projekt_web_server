@@ -1,0 +1,8 @@
+cards.db
+value
+
+people.db
+name, code, card, access_lvl
+
+devices.db
+name: [access_lvl, [people]]
