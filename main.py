@@ -69,12 +69,51 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
                         self.do_GET("Added/changed person")       
                     else:
                         self.do_GET("Wrong data")       
-                               
+                           
+                elif 'person-to-delete' in qc.keys():
+                    with open('./db/people.db','rb') as file:
+                        data = load(file)
+                    new_data = [(name, code, card, access_lvl) for name, code, card, access_lvl in data if name != qc['person-to-delete']]
+                    if len(new_data)!=len(data):
+                        with open('./db/people.db','wb') as file:
+                            dump(new_data, file)
+                        self.do_GET(f"Removed {qc['person-to-delete']}")
+                    else:
+                        self.do_GET("Wrong data") 
+                        
+                # ------------ device -----------------
+                elif 'device-access-level' in qc.keys():
+                    if int(qc['device-access-level']) > 0:
+                        with open('./db/devices.db','rb') as file:
+                            data = load(file)
+                        data['d1'] = [int(qc['device-access-level']), data['d1'][1]]
+                        with open('./db/devices.db','wb') as file:
+                            dump(data, file)
+                        self.do_GET(f"Changed device's access level to: {qc['device-access-level']}")
+                    else:
+                        self.do_GET("Wrong data") 
+                elif 'personal-access-' == list(qc.keys())[0][:16]:
+                    with open('./db/devices.db','rb') as file:
+                            data = load(file)
+                    data['d1'] = [data['d1'][0], []]
+                    
+                    for value in qc.values():
+                        data['d1'][1].append(value)
+                        
+                    with open('./db/devices.db','wb') as file:
+                        dump(data, file)
+                    
+                    self.do_GET("Change device's personal access")
                 else:
                     self.send_response(400)
                     
     def do_GET(self, res=''):
         if self.path == '/':
+            with open('./db/devices.db','rb') as file:
+                device_data = load(file)
+            device_access_level = device_data['d1'][0]
+            device_personal_access = device_data['d1'][1]
+            
             with open('./db/people.db','rb') as file:
                 data = load(file)
             people_data = "".join([f"<li>Name: {name:>10}, code: {code}, card: {card}, access lvl: {access_lvl}</li>" for name, code, card, access_lvl in data])
@@ -94,6 +133,14 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
                 if card != None:
                     card_data2.append(card)
             cards += "".join([f'<option value="{value}">{value}</option>' for value in card_data2])
+            
+            people_to_delete = '<option value="" selected="true" disabled>None</option>'
+            people_to_delete += "".join([f'<option value="{name}">{name}</option>' for name, code, card, access_lvl in data])
+            
+            personal_access = "".join([
+                f'<input type="checkbox" id="personal-access-{name}" name="personal-access-{name}" value="{name}" {'checked' if name in device_personal_access else ''} ><label for="personal-access-{name}">{name}</label><br>'
+                for name, code, card, access_lvl in data if access_lvl < device_access_level or name in device_personal_access
+            ])
 
             self.send_response(200)
             self.send_header('Content-type', 'text/html')
@@ -108,45 +155,58 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
                     <title>Server</title>
                 </head>
 
-                <body>
+                <body style='font-family: sans-serif;'>
                     <h1>People:</h1>
                     <ol>
                         {people_data}
                     </ol>
-                    <div style='display:inline-block; margin-right:20px;'>
-                        <h2>Add or change person:</h2>
-                        <form action="/" method="post">
-                            <label for="name">Name: </label><br>
-                            <input type="text" id="name" name="name" autocomplete="off" required><br>
-                            <label for="code">Code: </label><br>
-                            <input type="text" id="code" name="code" autocomplete="off"><br>
-                            <label for="cards">Card: </label><br>
-
-                            <select id="cars" name="card">
-                                {cards}
-                            </select><br>
-                            <label for="access_lvl">Access level:</label><br>
-                            <input type="number" id="access_lvl" name="access_lvl" required><br><br>
-                            <input type="submit" value="add/change"  >
-                        </form>
+                    <div style='display: flex; margin-bottom: 20px;'>
+                        <div style='margin-right:20px;'>
+                            <h2>Add or change person:</h2>
+                            <form action="/" method="post">
+                                <label for="name">Name: </label><br>
+                                <input type="text" id="name" name="name" autocomplete="off" required><br>
+                                <label for="code">Code: </label><br>
+                                <input type="text" id="code" name="code" autocomplete="off"><br>
+                                <label for="cards">Card: </label><br>
+    
+                                <select id="cars" name="card">
+                                    {cards}
+                                </select><br>
+                                <label for="access_lvl">Access level:</label><br>
+                                <input type="number" id="access_lvl" name="access_lvl" required><br><br>
+                                <input type="submit" value="add/change"  >
+                            </form>
+                        </div>
+                        <div>
+                            <h2>Remove person:</h2>
+                            <form action="/" method="post">
+                                <label for="person-to-delete">Name: </label><br>
+                                <select id="person-to-delete" name="person-to-delete" required>
+                                    {people_to_delete}
+                                </select><br><br>
+                                <input type="submit" value="remove"  >
+                            </form>
+                        </div>
                     </div>
-                    <div style='display:inline-block;'>
-                        <h2>Remove person:</h2>
-                        <form action="/" method="post">
-                            <label for="name">Name: </label><br>
-                            <input type="text" id="name" name="name" autocomplete="off" required><br>
-                            <label for="code">Code: </label><br>
-                            <input type="text" id="code" name="code" autocomplete="off"><br>
-                            <label for="cards">Card: </label><br>
-
-                            <select id="cars" name="card">
-                                {cards}
-                            </select><br>
-                            <label for="access_lvl">Access level:</label><br>
-                            <input type="number" id="access_lvl" name="access_lvl" required><br><br>
-                            <input type="submit" value="add/change"  >
-                        </form>
-                    </div>
+                    <h1>Devices:</h1>
+                        <div style='display: flex;'>
+                            <div>
+                                <h2>Change device's access level:</h2>
+                                <form action="/" method="post">
+                                    <label for="device-access-level">New access level:</label><br>
+                                    <input type="number" id="device-access-level" name="device-access-level" required><br><br>
+                                    <input type="submit" value="Change" >
+                                </form>
+                            </div>
+                            <div>
+                                <h2>Change device's personal access:</h2>
+                                <form action="/" method="post">
+                                    {personal_access}<br>
+                                    <input type="submit" value="Change" >
+                                </form>
+                            </div>
+                        </div>
                     <p>{res}</p>
                 </body>
                 </html>
