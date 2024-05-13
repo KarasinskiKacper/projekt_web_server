@@ -228,6 +228,30 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
                 self.send_header('WWW-authenticate', 'Basic')
                 self.end_headers()
                 self.wfile.write(b"denied") #TODO remove
+        elif self.path.startswith('/check-card-and-code'):
+            query_components = parse_qs(urlparse(self.path).query)
+            code = query_components['code'][0]
+            card = query_components['card'][0]
+            device_id = query_components['id'][0]
+        
+            # check = self.check_code(code, device_id)
+            # if check:
+            check = self.check_card_and_code(code, card, device_id)
+            if check:
+                self.send_response(200)
+                self.send_header('Content-type', 'text/plain')
+                self.end_headers()
+                self.wfile.write(b"ok") #TODO remove
+            else:
+                self.send_response(401)
+                self.send_header('WWW-authenticate', 'Basic')
+                self.end_headers()
+                self.wfile.write(b"denied") #TODO remove
+            # else:
+            #     self.send_response(401)
+            #     self.send_header('WWW-authenticate', 'Basic')
+            #     self.end_headers()
+            #     self.wfile.write(b"denied") #TODO remove
 
                 
                 
@@ -238,6 +262,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         with open("./db/logs.txt", 'a') as file:
             file.write(message)
     
+     
     def check_code(self, code_to_check: str,  device_id: str) -> bool:
         with open("./db/people.db", "rb") as file:
             data = load(file)
@@ -250,9 +275,9 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
                     if access_lvl >= device_access_lvl:
                         self.add_log(device_id, "ACCESS GRANTED", 'code', name)
                         return True
-                    elif name in device_people:
-                        self.add_log(device_id, "ACCESS GRANTED", 'code', name)
-                        return True
+                    # elif name in device_people:
+                    #     self.add_log(device_id, "ACCESS GRANTED", 'code', name)
+                    #     return True
                     else:
                         self.add_log(device_id, "ACCESS DENIED ", 'code', name)
                         return False
@@ -267,9 +292,9 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
                     if access_lvl >= device_access_lvl:
                         self.add_log(device_id, "ACCESS GRANTED", 'card', name)
                         return True
-                    elif name in device_people:
-                        self.add_log(device_id, "ACCESS GRANTED", 'card', name)
-                        return True
+                    # elif name in device_people:
+                    #     self.add_log(device_id, "ACCESS GRANTED", 'card', name)
+                    #     return True
                     else:
                         self.add_log(device_id, "ACCESS DENIED ", 'card', name)
                         return False
@@ -286,9 +311,31 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
                 self.add_log(device_id, "ADDED NEW CARD", 'new card')
             else: 
                 self.add_log(device_id, "OWNERLESS CARD", 'ownerless card')
-                
             return False
-
+                    
+                    
+    def check_card_and_code(self, code_to_check: str, card_to_check: str,  device_id: str) -> bool:
+        with open("./db/people.db", "rb") as file:
+            data = load(file)
+        # if len(code_to_check)==4:
+        for name, code, card, access_lvl in data:
+            if code_to_check == code and card_to_check == card:
+                with open("./db/devices.db", "rb") as file:
+                    devices_data = load(file)
+                device_access_lvl, device_people = devices_data[device_id]
+                if access_lvl >= device_access_lvl:
+                    self.add_log(device_id, "ACCESS GRANTED", 'c&&c', name)
+                    return True
+                elif name in device_people:
+                    self.add_log(device_id, "ACCESS GRANTED", 'c&&c', name)
+                    return True
+                else:
+                    self.add_log(device_id, "ACCESS DENIED ", 'c&&c', name)
+                    return False
+                    
+        self.add_log(device_id, "ACCESS DENIED ", 'c&&c', "unknown")
+        return False
+            
 
 if __name__ == "__main__":
     httpd = HTTPServer(server_address, SimpleHTTPRequestHandler)
