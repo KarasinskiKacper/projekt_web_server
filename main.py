@@ -138,7 +138,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             people_to_delete += "".join([f'<option value="{name}">{name}</option>' for name, code, card, access_lvl in data])
             
             personal_access = "".join([
-                f'<input type="checkbox" id="personal-access-{name}" name="personal-access-{name}" value="{name}" {'checked' if name in device_personal_access else ''} ><label for="personal-access-{name}">{name}</label><br>'
+                f'<input type="checkbox" id="personal-access-{name}" name="personal-access-{name}" value="{name}" {"checked" if name in device_personal_access else ""} ><label for="personal-access-{name}">{name}</label><br>'
                 for name, code, card, access_lvl in data if access_lvl < device_access_level or name in device_personal_access
             ])
 
